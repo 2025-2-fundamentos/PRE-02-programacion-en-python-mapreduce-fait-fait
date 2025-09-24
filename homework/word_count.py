@@ -8,57 +8,6 @@ import string
 import time
 
 
-def initialize_directory(directory):
-    if os.path.exists(directory):
-        for file in glob.glob(f"{directory}/*"):
-            os.remove(file)
-    else:
-        os.makedirs(directory)
-
-
-def copy_and_number_raw_files_to_input_folder(raw_dir, input_dir, n=5000):
-    for file in glob.glob(f"{raw_dir}/*"):
-        with open(file, "r", encoding="utf-8") as f:
-            text = f.read()
-
-        for i in range(1, n + 1):
-            raw_filename_with_extension = os.path.basename(file)
-            raw_filename_without_extension = os.path.splitext(
-                raw_filename_with_extension
-            )[0]
-            new_filename = f"{raw_filename_without_extension}_{i}.txt"
-            with open(f"{input_dir}/{new_filename}", "w", encoding="utf-8") as f2:
-                f2.write(text)
-
-
-def wordcount_mapper(sequence):
-    pairs_sequence = []
-    for _, line in sequence:
-        line = line.lower()
-        line = line.translate(str.maketrans("", "", string.punctuation))
-        line = line.replace("\n", "")
-        words = line.split()
-        pairs_sequence.extend((word, 1) for word in words)
-
-    return pairs_sequence
-
-
-def wordcount_reducer(pairs_sequence):
-    result = []
-    for key, value in pairs_sequence:
-        if result and result[-1][0] == key:
-            result[-1] = (key, result[-1][1] + value)
-        else:
-            result.append((key, value))
-    return result
-
-
-initialize_directory("files/input")
-copy_and_number_raw_files_to_input_folder("files/raw", "files/input", 100)
-
-start_time = time.time()
-
-
 def mapreduce(
     mapper,
     reducer,
@@ -102,13 +51,87 @@ def mapreduce(
     create_success_file(output_dir)
 
 
-mapreduce(
-    wordcount_mapper,
-    wordcount_reducer,
-    "files/input",
-    "files/output",
-)
+def run_experiment(
+    n,
+    mapper,
+    reducer,
+    raw_dir,
+    input_dir,
+    output_dir,
+):
 
-end_time = time.time()
+    def initialize_directory(directory):
+        if os.path.exists(directory):
+            for file in glob.glob(f"{directory}/*"):
+                os.remove(file)
+        else:
+            os.makedirs(directory)
 
-print(f"Tiempo de ejecución: {end_time - start_time:.2f} segundos")
+    def copy_and_number_raw_files_to_input_folder(raw_dir, input_dir, n=5000):
+        for file in glob.glob(f"{raw_dir}/*"):
+            with open(file, "r", encoding="utf-8") as f:
+                text = f.read()
+
+            for i in range(1, n + 1):
+                raw_filename_with_extension = os.path.basename(file)
+                raw_filename_without_extension = os.path.splitext(
+                    raw_filename_with_extension
+                )[0]
+                new_filename = f"{raw_filename_without_extension}_{i}.txt"
+                with open(f"{input_dir}/{new_filename}", "w", encoding="utf-8") as f2:
+                    f2.write(text)
+
+    initialize_directory(input_dir)
+    copy_and_number_raw_files_to_input_folder(raw_dir, input_dir, n)
+
+    start_time = time.time()
+
+    mapreduce(
+        mapper,
+        reducer,
+        input_dir,
+        output_dir,
+    )
+
+    end_time = time.time()
+
+    print(f"Tiempo de ejecución: {end_time - start_time:.2f} segundos")
+
+
+def wordcount_mapper(sequence):
+    pairs_sequence = []
+    for _, line in sequence:
+        line = line.lower()
+        line = line.translate(str.maketrans("", "", string.punctuation))
+        line = line.replace("\n", "")
+        words = line.split()
+        pairs_sequence.extend((word, 1) for word in words)
+
+    return pairs_sequence
+
+
+def wordcount_reducer(pairs_sequence):
+    result = []
+    for key, value in pairs_sequence:
+        if result and result[-1][0] == key:
+            result[-1] = (key, result[-1][1] + value)
+        else:
+            result.append((key, value))
+    return result
+
+
+if __name__ == "__main__":
+
+    run_experiment(
+        n=5,  # or any number you want
+        mapper=wordcount_mapper,
+        reducer=wordcount_reducer,
+        raw_dir="files/raw",
+        input_dir="files/input",
+        output_dir="files/output",
+    )
+
+    #
+
+    
+    
